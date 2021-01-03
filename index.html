@@ -1,0 +1,370 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<title>COVID-19 Dashboard Example with Leaflet.js and Chart.js</title>
+	<meta charset="utf-8" />
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.1/dist/leaflet.css" />
+	<script src="https://unpkg.com/leaflet@1.0.1/dist/leaflet.js"></script>
+	<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+    	<script type="text/javascript" src="http://www.chartjs.org/assets/Chart.js"> </script>
+		<script type="text/javascript" src="https://www.chartjs.org/samples/latest/utils.js"> </script>
+<script src="https://www.chartjs.org/dist/2.9.3/Chart.min.js"></script>
+
+	<style>
+
+		#top {
+			width: 100%;
+			height: 40px;
+			float:top;
+		}
+
+		#map {
+			width: 50%;
+			height: 550px;
+			float:left;
+		}
+
+		#chartDiv {
+			width: 50%;
+			height: 500px;
+			float:left;
+		}
+
+
+		p,ol {
+			font: 12px/14px Arial, Helvetica, sans-serif;	
+			
+		}
+
+		.info {
+			padding: 16px 10px;
+			font: 14px/16px Arial, Helvetica, sans-serif;
+			background: white;
+			background: rgba(255,255,255,0.8);
+			box-shadow: 0 0 15px rgba(0,0,0,0.2);
+			border-radius: 5px;
+		}
+		.info h4 {
+			margin: 0 0 5px;
+			color: 'white';
+		}
+
+		.legend {
+			text-align: left;
+			line-height: 18px;
+			color: #555;
+		}
+		.legend i {
+			width: 18px;
+			height: 18px;
+			float: left;
+			margin-right: 8px;
+			opacity: 0.7;
+		}
+
+
+	</style>
+</head>
+<body>
+	<div id="top">
+		<p align="center"><b>Prototype Open Source COVID-19 Dashboard Example with <a href="https://leafletjs.com/" target="new">Leaflet.js</a> and <a href="https://www.chartjs.org/" target="new">Chart.js</a>     <br/>
+		<a href="dashboard_info.html" target="popup" onclick="window.open('dashboard_info.html','name','width=750,height=550')">Click here for more information (will open in a new window)</a></b><br/> <b><a href="http://gisfordisastermanagement.com/"> GIS For Disaster Management Home </a></b></p>
+	</div>
+	<div id="map"></div>
+	<div id="chartDiv">
+		<canvas id="barChartCanvas" height="130"></canvas>
+		<canvas id="ScatterCanvas" height="130"></canvas>
+	</div>
+	
+	<script src="https://unpkg.com/leaflet@1.0.1/dist/leaflet.js"></script>
+	<script type="text/javascript">
+    
+	var scatterData = [];
+	var scatterLabels = [];
+	var color = Chart.helpers.color;
+	
+	//bar chart that updates when the map is interacted with
+    var newChart = function(labels, data) {
+        var dataLength = labels ? labels.length : 0;
+        //console.log
+        //console.log('we\'re in newChart', labels, data);
+        //will select colors to use based on the number of data points
+		var backgroundColors = ['rgba(255,255,153, 0.9)', //confirmed
+                                'rgba(127,201,127, 0.9)',  //discharged
+                                'rgba(228,26,28, 0.9)'	//death
+                               ];
+        var colors = [];
+        for (var i = 0; i < dataLength; i++) {
+            colors.push(backgroundColors[i]);
+        };
+        //console.log('newChart colors', colors);
+        var ctx = document.getElementById("barChartCanvas");
+        var barChartCanvas = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Info',
+                        data: data,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                beginAtZero:true
+                            }
+                        }]
+                    }
+                }
+            });
+    };// var newChart = function(labels, data) {
+
+
+	//scatter plot chart
+	var scatterChartData = {
+			labels: scatterLabels,
+			datasets: [{
+				label: 'Confirmed Cases (X-axis) vs. Discharged (Y-axis)',
+				borderColor: window.chartColors.red,
+				backgroundColor: color(window.chartColors.red).alpha(0.2).rgbString(),
+				data: scatterData
+			}]
+		};
+	
+	//will draw the scatter plot
+	window.onload = function() {
+	
+		//intialize the bar chart with nothing
+		newChart([], []);
+
+		var ctxScatter = document.getElementById('ScatterCanvas').getContext('2d');
+		//console.log(scatterChartData);
+		
+		window.myScatter = Chart.Scatter(ctxScatter, {
+			data: scatterChartData,
+			options: {
+				title: {
+					display: true,
+					text: 'Scatterplot: Mouse Over Data Points to See Individual Values'
+					},
+				
+				 tooltips: {
+				  callbacks: {
+					title: function(tooltipItem, data) {
+						//will get the name of ths state
+						return data['labels'][tooltipItem[0]['index']];
+					},
+					label: function(tooltipItem, data) {
+						//will get the values 
+						label_string = "Confirmed Cases: " + tooltipItem.xLabel + " Discharged: " + tooltipItem.yLabel;
+						
+						return  label_string;
+					}
+				},//callbacks: {
+				  backgroundColor: '#FFF',
+				  titleFontSize: 14,
+				  titleFontColor: '#0066ff',
+				  bodyFontColor: '#000',
+				  bodyFontSize: 12,
+				  displayColors: false
+			}//tooltips: {
+				
+				
+		}	//options: {
+				
+	});//window.myScatter = Chart.Scatter(ctxScatter, {
+	
+	window.myScatter.update();
+		
+	};//window.onload = function() {
+
+
+		//create the leaflet.js map, centered on India
+		var map = L.map('map').setView([22.058510,77.615842],4.5, zoomSnap = 0.1, zoomDelta = 0.1);
+		L.tileLayer('http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+			attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>'
+		}).addTo(map);
+
+		var info = L.control();
+
+		info.onAdd = function(map) {
+			this._div = L.DomUtil.create('div', 'info');
+			
+			this.update();
+			return this._div;
+			
+		};
+        
+		info.update = function(props) {
+            if (props) {
+				
+					var labels = ['Confirmed Cases', 'Discharged', 'Deaths'];
+                    var data = [props.india_dev_confirmed_cases, props.india_dev_discharged, props.india_dev_death];
+                    //console.log('labels', labels, 'data', data);
+					
+					//will add a floating DIV tage over the map
+					var overview = '<h4>Data for: ' + props.NAME_1 + ' State</h4>' + "<br/>";
+					overview += 'Confirmed Cases: ' + props.india_dev_confirmed_cases + "<br/>";
+					overview += 'Discharged: ' + props.india_dev_discharged + "<br/>";
+					overview += 'Deaths: ' + props.india_dev_death + "<br/>";
+                    this._div.innerHTML = overview;
+                    //send this data to the bar chart
+					newChart(labels, data);
+					
+					
+					
+            }
+		};
+
+		info.addTo(map);
+		
+		
+		//sets the color ramp for the map shape
+		//5 class natural using colorbrewer colors
+		function getColor(b) {
+			
+			return b >= 0.0 & b <= 86 ? '#ffffcc' :
+                   b >= 87 & b <= 400 ? '#a1dab4':
+                   b >= 401 & b <= 1084 ? '#41b6c4':
+                   b >= 1085 & b <= 1893 ? '#2c7fb8':
+			       b >= 1894 & b <= 3651 ? '#253494' :
+			    			'grey' ;
+		}
+
+		function style_1(feature){
+			return{
+				weight: 1,
+				opacity: 1,
+				color: 'white',
+			};
+		}
+
+		//sets the intial look of the map using the confirmed cases
+		function style(feature) {
+			return {
+				weight: 0.6,
+				opacity: 0.4,
+				color: 'white',
+				fillOpacity: 0.8,
+				fillColor: getColor(feature.properties.india_dev_confirmed_cases)
+			};
+		}
+
+
+		function highlightFeature(e) {
+			//console.log('highlightFeature was entered');
+			var layer = e.target;
+
+			layer.setStyle({
+				weight: 1.5,
+				color: 'black',
+				dashArray: '',
+				fillOpacity: 0.7
+			});
+
+			if (!L.Browser.ie && !L.Browser.opera) {
+				layer.bringToFront();
+			}
+
+			//this is how the bar chart will be updated - 
+			//data contained in the map feature will be sent to update the bar chart
+			info.update(layer.feature.properties);
+		}
+
+		var geojson;
+
+		function resetHighlight(e) {
+			geojson.resetStyle(e.target);
+			//comment the line below if you don't want the data to reset when the mouse moves away
+			info.update();
+		}
+
+		function onEachFeature(feature, layer) {
+			//console.log('onEachFeature was entered');
+			//get all the data for adding to the scatter plot
+			if (feature.properties) {
+
+				//no null values
+				if (feature.properties.india_dev_confirmed_cases != null) {
+					scatterData.push  ({x: feature.properties.india_dev_confirmed_cases, y:feature.properties.india_dev_discharged} );
+					
+					//get the statename for labeling in the scatterplot
+					scatterLabels.push(feature.properties.NAME_1);
+					
+				} else {
+					console.log("null");
+				}
+				
+				
+				//force the scatter plot to draw when the page loads
+				window.myScatter.update();
+					
+			}
+			
+			
+			layer.on({
+				mouseover: highlightFeature,
+				mouseout: resetHighlight
+			});
+		}
+
+		//this is where the GeoJSON created in QGIS is loaded into the map
+		$.getJSON ("india_covid_geojson.geojson", function(data) {
+			//console.log('geojson retrieved');
+			geojson = L.geoJson(data, {
+				style: style,
+				onEachFeature: onEachFeature
+			}).addTo(map);
+		});
+
+
+		//update this if you want different credits on the bottom of the map
+		map.attributionControl.addAttribution('COVID-19 Data India &copy; <a href="https://www.mohfw.gov.in/">Ministry of Health and Family Welfare</a>');
+
+		var legend = L.control({position: 'bottomright'});
+
+		legend.onAdd = function (map) {
+
+			var div = L.DomUtil.create('div', 'info legend'),
+				grades = [0, 86, 400, 1084, 1893, 3651],
+				labels = ['<strong>Confirmed Cases</strong>'],
+				from, to;
+			var x=1;
+            var y=1;
+			for (var i = 0; i < grades.length - 1; i++) {
+				from = grades[i];
+				to = grades[i + 1];
+                y++;
+
+				//console.log("x" + from + " " + to);
+
+				/*labels.push(
+					'<i style="background:' + getColor(x,x+1) + '"></i> ' + from + (' to ' + to)
+                    );*/
+					
+					labels.push(
+					'<i style="background:' + getColor(from) + '"></i> ' + from  + (' to ' + to)
+                    );
+					
+			}
+
+			div.innerHTML = labels.join('<br>');
+			
+			return div;
+			
+			
+		};
+
+		legend.addTo(map);
+
+	</script>
+</body>
+</html>
